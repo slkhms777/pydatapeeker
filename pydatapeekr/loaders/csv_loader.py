@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from datalens.loaders.core import register_loader
+from pydatapeekr.loaders.core import register_loader
 
 
 def _load_delimited(path: Path, delimiter: str) -> Any:

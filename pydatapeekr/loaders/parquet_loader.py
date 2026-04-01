@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from datalens.loaders.core import register_loader
+from pydatapeekr.loaders.core import register_loader
 
 
 @register_loader(".parquet")

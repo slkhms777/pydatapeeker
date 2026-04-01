@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from datalens.formatters import format_inspection
-from datalens.inspectors.core import analyze_object
-from datalens.loaders import load_file
+from pydatapeekr.formatters import format_inspection
+from pydatapeekr.inspectors.core import analyze_object
+from pydatapeekr.loaders import load_file
 
 
 def inspect_obj(

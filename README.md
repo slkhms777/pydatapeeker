@@ -1,6 +1,6 @@
-# DataLens
+# PyDataPeekr
 
-DataLens is a Python tool for inspecting nested data files and complex in-memory objects with readable tree and Markdown output.
+PyDataPeekr is a Python tool for inspecting nested data files and complex in-memory objects with readable tree and Markdown output.
 
 Chinese README: [docs/README_zh.md](docs/README_zh.md)
 
@@ -11,8 +11,8 @@ Chinese README: [docs/README_zh.md](docs/README_zh.md)
 ## Installation
 
 ```bash
-git clone https://github.com/slkhms777/DataLens.git
-cd DataLens
+git clone https://github.com/slkhms777/pydatapeekr.git
+cd pydatapeekr
 pip install -e .
 ```
 
@@ -21,19 +21,19 @@ pip install -e .
 Quick Start:
 
 ```bash
-datalens your_file_path
+pydatapeekr your_file_path
 ```
 
 Show all CLI options:
 
 ```bash
-datalens --help
+pydatapeekr --help
 ```
 
 Common example:
 
 ```bash
-datalens your_file.parquet --max-depth 4 --max-dict-items 8 --max-list-items 1
+pydatapeekr your_file.parquet --max-depth 4 --max-dict-items 8 --max-list-items 1
 ```
 
 Supported CLI parameters:
@@ -56,7 +56,7 @@ Supported CLI parameters:
 ## API Usage
 
 ```python
-from datalens import inspect_file, inspect_obj
+from pydatapeekr import inspect_file, inspect_obj
 
 text = inspect_file(
     "data.json",

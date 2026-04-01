@@ -5,12 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from datalens.inspectors.dataframe import summarize_dataframe
-from datalens.inspectors.ndarray import summarize_ndarray
-from datalens.inspectors.table import summarize_table
-from datalens.inspectors.tensor import tensor_display_type
-from datalens.loaders.pickle_static import PrebuiltInspection, StaticPickleData, inspect_pickle_structure
-from datalens.utils import distribution, safe_repr, truncate_mapping_items, truncate_sequence_items, type_name
+from pydatapeekr.inspectors.dataframe import summarize_dataframe
+from pydatapeekr.inspectors.ndarray import summarize_ndarray
+from pydatapeekr.inspectors.table import summarize_table
+from pydatapeekr.inspectors.tensor import tensor_display_type
+from pydatapeekr.loaders.pickle_static import PrebuiltInspection, StaticPickleData, inspect_pickle_structure
+from pydatapeekr.utils import distribution, safe_repr, truncate_mapping_items, truncate_sequence_items, type_name
 
 
 def analyze_object(

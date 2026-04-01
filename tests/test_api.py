@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from datalens import inspect_file, inspect_obj
+from pydatapeekr import inspect_file, inspect_obj
 
 
 class ApiTests(unittest.TestCase):
@@ -158,7 +158,7 @@ class ApiTests(unittest.TestCase):
             with file_path.open("wb") as handle:
                 pickle.dump(payload, handle, protocol=4)
 
-            with patch("datalens.loaders.pickle_loader.pickle.load", side_effect=ModuleNotFoundError("torch")):
+            with patch("pydatapeekr.loaders.pickle_loader.pickle.load", side_effect=ModuleNotFoundError("torch")):
                 output = inspect_file(file_path)
 
         self.assertIn("sample.pkl: dict (2 keys)", output)
@@ -185,7 +185,7 @@ class ApiTests(unittest.TestCase):
         self.assertIn("... 1 more item(s)", output)
 
     def test_dataframe_summary_uses_concise_cell_previews(self) -> None:
-        from datalens.inspectors.dataframe import summarize_dataframe
+        from pydatapeekr.inspectors.dataframe import summarize_dataframe
 
         class FakeSeries:
             def __init__(self, values):
@@ -280,7 +280,7 @@ class ApiTests(unittest.TestCase):
         )
 
     def test_tree_formatter_recurses_through_meta_dicts_and_lists(self) -> None:
-        from datalens.formatters.tree import render_tree
+        from pydatapeekr.formatters.tree import render_tree
 
         inspection = {
             "name": "root",
@@ -302,7 +302,7 @@ class ApiTests(unittest.TestCase):
         self.assertIn("... 1 more item(s)", output)
 
     def test_tree_formatter_quotes_dataframe_and_dict_keys(self) -> None:
-        from datalens.formatters.tree import render_tree
+        from pydatapeekr.formatters.tree import render_tree
 
         inspection = {
             "name": "frame",
@@ -331,7 +331,7 @@ class ApiTests(unittest.TestCase):
         self.assertIn("[0]: ndarray(shape=(8,), dtype=float32)", output)
 
     def test_tree_formatter_places_truncated_items_after_first_child(self) -> None:
-        from datalens.formatters.tree import render_tree
+        from pydatapeekr.formatters.tree import render_tree
 
         inspection = {
             "name": "root",
@@ -347,7 +347,7 @@ class ApiTests(unittest.TestCase):
         self.assertLess(output.index("[0]: int"), output.index("... 2 more item(s)"))
 
     def test_tree_formatter_renders_key_types_as_special_inline_line(self) -> None:
-        from datalens.formatters.tree import render_tree
+        from pydatapeekr.formatters.tree import render_tree
 
         inspection = {
             "name": "root",
@@ -362,7 +362,7 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn("key_types: dict", output)
 
     def test_tree_formatter_renders_type_distribution_as_special_inline_line(self) -> None:
-        from datalens.formatters.tree import render_tree
+        from pydatapeekr.formatters.tree import render_tree
 
         inspection = {
             "name": "root",

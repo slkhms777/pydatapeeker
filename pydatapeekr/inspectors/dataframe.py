@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from datalens.utils import safe_repr
+from pydatapeekr.utils import safe_repr
 
 
 def summarize_dataframe(df: Any, *, max_items: int) -> dict[str, Any]:

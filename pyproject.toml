@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "datalens"
+name = "pydatapeekr"
 version = "0.1.0"
 description = "Inspect complex data files and nested Python objects with readable summaries."
 readme = "README.md"
@@ -22,7 +22,7 @@ yaml = ["PyYAML>=6.0"]
 numpy = ["numpy>=1.26"]
 
 [project.scripts]
-datalens = "datalens.cli:main"
+pydatapeekr = "pydatapeekr.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "."}

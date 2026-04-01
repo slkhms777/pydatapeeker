@@ -10,7 +10,7 @@ Loader = Callable[[Path], Any]
 _REGISTRY: dict[str, Loader] = {}
 
 
-class DataLensLoadError(RuntimeError):
+class PyDataPeekrLoadError(RuntimeError):
     """Raised when a file cannot be loaded."""
 
 
@@ -33,12 +33,12 @@ def load_file(path: str | Path) -> Any:
     suffix = file_path.suffix.lower()
     loader = _REGISTRY.get(suffix)
     if loader is None:
-        raise DataLensLoadError(
+        raise PyDataPeekrLoadError(
             f"Unsupported file type: {suffix or '<no extension>'}. "
             f"Supported types: {', '.join(sorted(_REGISTRY))}"
         )
     try:
         return loader(file_path)
     except Exception as exc:
-        raise DataLensLoadError(f"Failed to load {file_path}: {exc}") from exc
+        raise PyDataPeekrLoadError(f"Failed to load {file_path}: {exc}") from exc
 

@@ -1,11 +1,11 @@
-"""Command-line interface for DataLens."""
+"""Command-line interface for PyDataPeekr."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 
-from datalens import inspect_file
+from pydatapeekr import inspect_file
 
 
 def build_parser() -> argparse.ArgumentParser:

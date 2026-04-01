@@ -1,4 +1,4 @@
-"""Shared helper functions for DataLens."""
+"""Shared helper functions for PyDataPeekr."""
 
 from __future__ import annotations
 

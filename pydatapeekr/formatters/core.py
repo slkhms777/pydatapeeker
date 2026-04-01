@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datalens.formatters.markdown import render_markdown
-from datalens.formatters.tree import render_tree
+from pydatapeekr.formatters.markdown import render_markdown
+from pydatapeekr.formatters.tree import render_tree
 
 
 def format_inspection(inspection: dict, *, format: str) -> str:

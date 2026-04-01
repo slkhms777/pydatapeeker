@@ -7,8 +7,8 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from datalens.loaders.core import register_loader
-from datalens.loaders.pickle_static import StaticPickleData
+from pydatapeekr.loaders.core import register_loader
+from pydatapeekr.loaders.pickle_static import StaticPickleData
 
 
 @register_loader(".pkl", ".pickle")

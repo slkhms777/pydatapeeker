@@ -1,6 +1,6 @@
-# DataLens
+# PyDataPeekr
 
-DataLens 是一个用于探查嵌套数据文件和复杂 Python 对象结构的工具，支持清晰的树状输出和 Markdown 输出。
+PyDataPeekr 是一个用于探查嵌套数据文件和复杂 Python 对象结构的工具，支持清晰的树状输出和 Markdown 输出。
 
 English README: [../README.md](../README.md)
 
@@ -11,8 +11,8 @@ English README: [../README.md](../README.md)
 ## 2. 安装方式
 
 ```bash
-git clone https://github.com/slkhms777/DataLens.git
-cd DataLens
+git clone https://github.com/slkhms777/pydatapeekr.git
+cd pydatapeekr
 pip install -e .
 ```
 
@@ -21,19 +21,19 @@ pip install -e .
 快速开始：
 
 ```bash
-datalens your_file_path
+pydatapeekr your_file_path
 ```
 
 查看完整帮助：
 
 ```bash
-datalens --help
+pydatapeekr --help
 ```
 
 常用示例：
 
 ```bash
-datalens your_file.parquet --max-depth 4 --max-dict-items 8 --max-list-items 1
+pydatapeekr your_file.parquet --max-depth 4 --max-dict-items 8 --max-list-items 1
 ```
 
 支持的 CLI 参数：
@@ -56,7 +56,7 @@ datalens your_file.parquet --max-depth 4 --max-dict-items 8 --max-list-items 1
 ## 4. API 用法
 
 ```python
-from datalens import inspect_file, inspect_obj
+from pydatapeekr import inspect_file, inspect_obj
 
 text = inspect_file(
     "data.json",

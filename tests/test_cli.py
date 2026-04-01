@@ -15,7 +15,7 @@ class CliTests(unittest.TestCase):
             file_path = Path(tmp_dir) / "data.json"
             file_path.write_text(json.dumps({"x": [1, 2]}), encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, "-m", "datalens.cli", str(file_path)],
+                [sys.executable, "-m", "pydatapeekr.cli", str(file_path)],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -28,7 +28,7 @@ class CliTests(unittest.TestCase):
             file_path = Path(tmp_dir) / "data.json"
             file_path.write_text(json.dumps({"x": [1, "two"]}), encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, "-m", "datalens.cli", str(file_path), "--format", "markdown"],
+                [sys.executable, "-m", "pydatapeekr.cli", str(file_path), "--format", "markdown"],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -41,7 +41,7 @@ class CliTests(unittest.TestCase):
             file_path = Path(tmp_dir) / "data.json"
             file_path.write_text(json.dumps({"x": 1, "y": True}), encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, "-m", "datalens.cli", str(file_path), "--show-sample"],
+                [sys.executable, "-m", "pydatapeekr.cli", str(file_path), "--show-sample"],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -52,7 +52,7 @@ class CliTests(unittest.TestCase):
 
     def test_cli_help_shows_supported_parameters(self) -> None:
         result = subprocess.run(
-            [sys.executable, "-m", "datalens.cli", "--help"],
+            [sys.executable, "-m", "pydatapeekr.cli", "--help"],
             capture_output=True,
             text=True,
             check=False,
@@ -74,7 +74,7 @@ class CliTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "datalens.cli",
+                    "pydatapeekr.cli",
                     str(file_path),
                     "--max-dict-items",
                     "2",
@@ -95,7 +95,7 @@ class CliTests(unittest.TestCase):
             file_path = Path(tmp_dir) / "data.json"
             file_path.write_text(json.dumps({"x": 1}), encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, "-m", "datalens.cli", str(file_path), "--write-to-file"],
+                [sys.executable, "-m", "pydatapeekr.cli", str(file_path), "--write-to-file"],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -114,7 +114,7 @@ class CliTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "datalens.cli",
+                    "pydatapeekr.cli",
                     str(file_path),
                     "--format",
                     "markdown",
@@ -137,7 +137,7 @@ class CliTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "datalens.cli",
+                    "pydatapeekr.cli",
                     str(file_path),
                     "--write-to-file",
                     str(Path(tmp_dir) / "report.json"),

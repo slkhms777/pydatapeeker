@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from datalens.utils import safe_repr
+from pydatapeekr.utils import safe_repr
 
 
 def render_tree(inspection: dict[str, Any]) -> str:

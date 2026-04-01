@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from datalens.loaders.core import register_loader
+from pydatapeekr.loaders.core import register_loader
 
 
 @register_loader(".yaml", ".yml")
