@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datalens"
+version = "0.1.0"
+description = "Inspect complex data files and nested Python objects with readable summaries."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "slkhms777" }
+]
+dependencies = [
+  "pandas>=2.0",
+  "pyarrow>=14.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+yaml = ["PyYAML>=6.0"]
+numpy = ["numpy>=1.26"]
+
+[project.scripts]
+datalens = "datalens.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
