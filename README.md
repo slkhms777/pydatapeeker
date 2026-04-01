@@ -10,6 +10,16 @@ Chinese README: [docs/README_zh.md](docs/README_zh.md)
 
 ## Installation
 
+Install directly from PyPI:
+
+```bash
+pip install pydatapeekr
+# or
+uv pip install pydatapeekr
+```
+
+For local development:
+
 ```bash
 git clone https://github.com/slkhms777/pydatapeekr.git
 cd pydatapeekr

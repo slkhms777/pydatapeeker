@@ -10,6 +10,16 @@ English README: [../README.md](../README.md)
 
 ## 2. 安装方式
 
+直接从 PyPI 安装：
+
+```bash
+pip install pydatapeekr
+# 或者
+uv pip install pydatapeekr
+```
+
+本地开发安装：
+
 ```bash
 git clone https://github.com/slkhms777/pydatapeekr.git
 cd pydatapeekr
