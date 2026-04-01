@@ -35,6 +35,7 @@ def summarize_dataframe(df: Any, *, max_items: int) -> dict[str, Any]:
             "dtype": dtypes[str(column)],
             "null_count": null_count[str(column)],
             "example": column_examples.get(str(column), "n/a"),
+            "display_type": _cell_display_type(df[column].iloc[0]) if len(df[column]) > 0 else dtypes[str(column)],
             "python_types": column_type_counts[str(column)],
             "mixed_types": str(column) in mixed_type_columns,
         }
@@ -64,7 +65,7 @@ def _summarize_cell(value: Any) -> str:
     if _looks_like_ndarray(value):
         return f"ndarray(shape={_safe_shape(value)}, dtype={getattr(value, 'dtype', 'unknown')})"
     if _looks_like_torch_tensor(value):
-        return f"torch tensor(shape={_safe_shape(value)}, dtype={getattr(value, 'dtype', 'unknown')})"
+        return f"torch.Tensor(shape={_safe_shape(value)}, dtype={getattr(value, 'dtype', 'unknown')})"
     if isinstance(value, dict):
         keys = list(value.keys())
         preview = ", ".join(str(key) for key in keys[:3])
@@ -73,6 +74,42 @@ def _summarize_cell(value: Any) -> str:
     if isinstance(value, (list, tuple, set)):
         return f"{type(value).__name__}(len={len(value)})"
     return safe_repr(value, max_length=60)
+
+
+def _cell_display_type(value: Any) -> str:
+    """Return a type-oriented label for a DataFrame cell schema."""
+    if value is None:
+        return "NoneType"
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float"
+    if isinstance(value, str):
+        return "str"
+    if _looks_like_numpy_scalar(value):
+        python_value = _numpy_scalar_to_python(value)
+        if isinstance(python_value, bool):
+            return "bool"
+        if isinstance(python_value, int):
+            return "int"
+        if isinstance(python_value, float):
+            return "float"
+        return type(python_value).__name__
+    if _looks_like_ndarray(value):
+        return f"ndarray(shape={_safe_shape(value)}, dtype={getattr(value, 'dtype', 'unknown')})"
+    if _looks_like_torch_tensor(value):
+        return f"torch.Tensor(shape={_safe_shape(value)}, dtype={getattr(value, 'dtype', 'unknown')})"
+    if isinstance(value, dict):
+        return f"dict ({len(value)} keys)"
+    if isinstance(value, list):
+        return f"list (len={len(value)})"
+    if isinstance(value, tuple):
+        return f"tuple (len={len(value)})"
+    if isinstance(value, set):
+        return f"set (len={len(value)})"
+    return type(value).__name__
 
 
 def _looks_like_ndarray(value: Any) -> bool:

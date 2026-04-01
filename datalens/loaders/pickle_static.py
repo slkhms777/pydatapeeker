@@ -16,6 +16,14 @@ class PrebuiltInspection:
 
 
 @dataclass(frozen=True)
+class StaticPickleData:
+    """Pickle bytes deferred for static inspection with runtime-configured limits."""
+
+    data: bytes
+    root_name: str
+
+
+@dataclass(frozen=True)
 class _GlobalRef:
     module: str
     name: str
@@ -24,9 +32,15 @@ class _GlobalRef:
 _MARK = object()
 
 
-def inspect_pickle_structure(data: bytes, *, root_name: str = "root", max_list_items: int = 1) -> PrebuiltInspection:
+def inspect_pickle_structure(
+    data: bytes,
+    *,
+    root_name: str = "root",
+    max_dict_items: int = 8,
+    max_list_items: int = 1,
+) -> PrebuiltInspection:
     """Parse pickle opcodes into an approximate inspection tree."""
-    parser = _StaticPickleParser(max_list_items=max_list_items)
+    parser = _StaticPickleParser(max_dict_items=max_dict_items, max_list_items=max_list_items)
     parsed = parser.parse(data)
     root = parser.to_node(parsed, name=root_name)
     parser.finalize(root)
@@ -34,7 +48,8 @@ def inspect_pickle_structure(data: bytes, *, root_name: str = "root", max_list_i
 
 
 class _StaticPickleParser:
-    def __init__(self, *, max_list_items: int) -> None:
+    def __init__(self, *, max_dict_items: int, max_list_items: int) -> None:
+        self.max_dict_items = max_dict_items
         self.max_list_items = max_list_items
         self.memo: dict[int, Any] = {}
         self.next_memo_index = 0
@@ -177,7 +192,10 @@ class _StaticPickleParser:
             key = items[index]
             value = items[index + 1]
             target["_item_count"] += 1
-            target["children"].append(self.to_node(value, name=str(key)))
+            if len(target["children"]) < self.max_dict_items:
+                child = self.to_node(value, name=str(key))
+                child["quote_name"] = True
+                target["children"].append(child)
         self._refresh_dict_summary(target)
 
     def _appends(self, target: Any, items: list[Any]) -> None:
@@ -239,6 +257,11 @@ class _StaticPickleParser:
         label = node.get("_label", "dict")
         count = node.get("_item_count", len(node.get("children", [])))
         node["summary"] = f"{label} ({count} keys)"
+        hidden = count - len(node.get("children", []))
+        if hidden > 0:
+            node["truncated_items"] = hidden
+        elif "truncated_items" in node:
+            node.pop("truncated_items")
 
     def _is_node(self, value: Any) -> bool:
         return isinstance(value, dict) and "summary" in value and "type" in value

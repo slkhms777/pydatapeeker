@@ -7,7 +7,9 @@ from typing import Any
 
 from datalens.inspectors.dataframe import summarize_dataframe
 from datalens.inspectors.ndarray import summarize_ndarray
-from datalens.loaders.pickle_static import PrebuiltInspection
+from datalens.inspectors.table import summarize_table
+from datalens.inspectors.tensor import tensor_display_type
+from datalens.loaders.pickle_static import PrebuiltInspection, StaticPickleData, inspect_pickle_structure
 from datalens.utils import distribution, safe_repr, truncate_mapping_items, truncate_sequence_items, type_name
 
 
@@ -16,9 +18,19 @@ def analyze_object(
     *,
     name: str = "root",
     max_depth: int = 4,
-    max_items: int = 5,
+    max_dict_items: int = 8,
+    max_list_items: int = 1,
+    show_sample: bool = False,
 ) -> dict[str, Any]:
     """Analyze any supported Python object into a serializable tree."""
+    if isinstance(obj, StaticPickleData):
+        payload = inspect_pickle_structure(
+            obj.data,
+            root_name=name or obj.root_name,
+            max_dict_items=max_dict_items,
+            max_list_items=max_list_items,
+        ).payload
+        return payload
     if isinstance(obj, PrebuiltInspection):
         payload = copy_payload(obj.payload)
         payload["name"] = name
@@ -29,7 +41,9 @@ def analyze_object(
         name=name,
         depth=0,
         max_depth=max_depth,
-        max_items=max_items,
+        max_dict_items=max_dict_items,
+        max_list_items=max_list_items,
+        show_sample=show_sample,
         active_path=active_path,
     )
 
@@ -40,7 +54,9 @@ def _analyze(
     name: str,
     depth: int,
     max_depth: int,
-    max_items: int,
+    max_dict_items: int,
+    max_list_items: int,
+    show_sample: bool,
     active_path: set[int],
 ) -> dict[str, Any]:
     node: dict[str, Any] = {
@@ -63,50 +79,81 @@ def _analyze(
     try:
         if depth >= max_depth:
             node["summary"] = f"{type_name(obj)} (max depth reached)"
-            node["sample"] = safe_repr(obj)
+            if show_sample and _is_sample_type(obj):
+                node["sample"] = safe_repr(obj)
             return node
 
         dataframe_type = _import_type("pandas", "DataFrame")
         table_type = _import_type("pyarrow", "Table")
         ndarray_type = _import_type("numpy", "ndarray")
+        tensor_type = _import_type("torch", "Tensor")
 
         if dataframe_type is not None and isinstance(obj, dataframe_type):
-            summary = summarize_dataframe(obj, max_items=max_items)
-            node["summary"] = f"DataFrame {tuple(summary['shape'])}"
-            node["meta"] = {
-                "shape": summary["shape"],
-                "column_count": summary["column_count"],
-                "sample_rows": summary["sample_rows"],
-            }
+            summary = summarize_dataframe(obj, max_items=max_list_items)
+            row_count, column_count = summary["shape"]
+            node["summary"] = f"DataFrame ({column_count} columns, {row_count} rows)"
             node["children"] = [
                 {
                     "name": column["name"],
                     "type": "dataframe_column",
                     "depth": depth + 1,
-                    "summary": f"column ({column['dtype']})",
-                    "meta": _dataframe_column_meta(column),
+                    "summary": f"list (len={row_count})",
+                    "quote_name": True,
+                    "children": (
+                        [
+                            {
+                                "name": "[0]",
+                                "type": "dataframe_value",
+                                "depth": depth + 2,
+                                "summary": column["display_type"],
+                            }
+                        ]
+                        if row_count > 0
+                        else []
+                    ),
+                    **({"truncated_items": row_count - 1} if row_count > 1 else {}),
                 }
-                for column in summary.get("column_summaries", [])[:max_items]
+                for column in summary.get("column_summaries", [])
             ]
-            hidden_columns = max(len(summary.get("column_summaries", [])) - len(node["children"]), 0)
-            if hidden_columns:
-                node["truncated_items"] = hidden_columns
             return node
 
         if table_type is not None and isinstance(obj, table_type):
-            schema_text = [f"{field.name}: {field.type}" for field in obj.schema]
-            node["summary"] = f"pyarrow.Table ({obj.num_rows} rows, {obj.num_columns} columns)"
-            node["meta"] = {
-                "shape": [obj.num_rows, obj.num_columns],
-                "schema": schema_text[:max_items],
-                "truncated_schema_fields": max(len(schema_text) - max_items, 0),
-            }
+            summary = summarize_table(obj)
+            row_count, column_count = summary["shape"]
+            node["summary"] = f"pyarrow.Table ({column_count} columns, {row_count} rows)"
+            node["children"] = [
+                {
+                    "name": column["name"],
+                    "type": "pyarrow_column",
+                    "depth": depth + 1,
+                    "summary": f"list (len={row_count})",
+                    "quote_name": True,
+                    "children": (
+                        [
+                            {
+                                "name": "[0]",
+                                "type": "pyarrow_value",
+                                "depth": depth + 2,
+                                "summary": column["display_type"],
+                            }
+                        ]
+                        if row_count > 0
+                        else []
+                    ),
+                    **({"truncated_items": row_count - 1} if row_count > 1 else {}),
+                }
+                for column in summary.get("column_summaries", [])
+            ]
             return node
 
         if ndarray_type is not None and isinstance(obj, ndarray_type):
-            summary = summarize_ndarray(obj, max_items=max_items)
+            summary = summarize_ndarray(obj, max_items=max_list_items)
             node["summary"] = f"ndarray {tuple(summary['shape'])}"
             node["meta"] = summary
+            return node
+
+        if tensor_type is not None and isinstance(obj, tensor_type):
+            node["summary"] = tensor_display_type(obj)
             return node
 
         if isinstance(obj, Mapping):
@@ -115,7 +162,9 @@ def _analyze(
                 node=node,
                 depth=depth,
                 max_depth=max_depth,
-                max_items=max_items,
+                max_dict_items=max_dict_items,
+                max_list_items=max_list_items,
+                show_sample=show_sample,
                 active_path=active_path,
             )
 
@@ -125,13 +174,16 @@ def _analyze(
                 node=node,
                 depth=depth,
                 max_depth=max_depth,
-                max_items=max_items,
+                max_dict_items=max_dict_items,
+                max_list_items=max_list_items,
+                show_sample=show_sample,
                 active_path=active_path,
             )
 
         if _is_basic_type(obj):
             node["summary"] = type_name(obj)
-            node["sample"] = safe_repr(obj)
+            if show_sample and _is_sample_type(obj):
+                node["sample"] = safe_repr(obj)
             return node
 
         if hasattr(obj, "__dict__"):
@@ -144,10 +196,12 @@ def _analyze(
                     name=str(key),
                     depth=depth + 1,
                     max_depth=max_depth,
-                    max_items=max_items,
+                    max_dict_items=max_dict_items,
+                    max_list_items=max_list_items,
+                    show_sample=show_sample,
                     active_path=active_path,
                 )
-                for key, value in list(attrs.items())[:max_items]
+                for key, value in list(attrs.items())[:max_dict_items]
             ]
             hidden = max(len(attrs) - len(node["children"]), 0)
             if hidden:
@@ -155,7 +209,8 @@ def _analyze(
             return node
 
         node["summary"] = type_name(obj)
-        node["sample"] = safe_repr(obj)
+        if show_sample and _is_sample_type(obj):
+            node["sample"] = safe_repr(obj)
         return node
     finally:
         if tracked:
@@ -168,21 +223,27 @@ def _analyze_mapping(
     node: dict[str, Any],
     depth: int,
     max_depth: int,
-    max_items: int,
+    max_dict_items: int,
+    max_list_items: int,
+    show_sample: bool,
     active_path: set[int],
 ) -> dict[str, Any]:
     items = list(obj.items())
-    shown, hidden = truncate_mapping_items(items, max_items)
+    shown, hidden = truncate_mapping_items(items, max_dict_items)
     node["summary"] = f"dict ({len(obj)} keys)"
-    node["meta"] = {"length": len(obj), "key_types": distribution(obj.keys())}
+    node["meta"] = {"key_types": distribution(obj.keys())}
     node["children"] = [
-        _analyze(
-            value,
-            name=str(key),
-            depth=depth + 1,
-            max_depth=max_depth,
-            max_items=max_items,
-            active_path=active_path,
+        _mark_quoted_name(
+            _analyze(
+                value,
+                name=str(key),
+                depth=depth + 1,
+                max_depth=max_depth,
+                max_dict_items=max_dict_items,
+                max_list_items=max_list_items,
+                show_sample=show_sample,
+                active_path=active_path,
+            )
         )
         for key, value in shown
     ]
@@ -197,15 +258,16 @@ def _analyze_sequence(
     node: dict[str, Any],
     depth: int,
     max_depth: int,
-    max_items: int,
+    max_dict_items: int,
+    max_list_items: int,
+    show_sample: bool,
     active_path: set[int],
 ) -> dict[str, Any]:
     sequence = list(obj)
-    shown, hidden = truncate_sequence_items(sequence, max_items)
+    shown, hidden = truncate_sequence_items(sequence, max_list_items)
     type_counts = distribution(sequence)
     node["summary"] = f"{type(obj).__name__} (len={len(sequence)})"
     node["meta"] = {
-        "length": len(sequence),
         "type_distribution": type_counts,
         "mixed_types": len(type_counts) > 1,
     }
@@ -215,7 +277,9 @@ def _analyze_sequence(
             name=f"[{index}]",
             depth=depth + 1,
             max_depth=max_depth,
-            max_items=max_items,
+            max_dict_items=max_dict_items,
+            max_list_items=max_list_items,
+            show_sample=show_sample,
             active_path=active_path,
         )
         for index, value in enumerate(shown)
@@ -227,6 +291,10 @@ def _analyze_sequence(
 
 def _is_basic_type(obj: Any) -> bool:
     return isinstance(obj, (str, int, float, bool, type(None), bytes))
+
+
+def _is_sample_type(obj: Any) -> bool:
+    return isinstance(obj, (str, int, float, bool, type(None)))
 
 
 def _should_track_identity(obj: Any) -> bool:
@@ -249,13 +317,7 @@ def copy_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return copied
 
 
-def _dataframe_column_meta(column: dict[str, Any]) -> dict[str, Any]:
-    """Build compact per-column metadata for tree rendering."""
-    meta = {
-        "null_count": column["null_count"],
-        "example": column["example"],
-        "python_types": column["python_types"],
-    }
-    if column.get("mixed_types"):
-        meta["mixed_types"] = True
-    return meta
+def _mark_quoted_name(node: dict[str, Any]) -> dict[str, Any]:
+    """Mark a node so its displayed name is rendered with double quotes."""
+    node["quote_name"] = True
+    return node

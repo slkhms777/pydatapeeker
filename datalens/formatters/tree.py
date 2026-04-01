@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -24,12 +25,13 @@ def _render_node(
     is_root: bool = False,
 ) -> None:
     connector = "" if is_root else ("└── " if is_last else "├── ")
-    label = f"{node['name']}: {node.get('summary') or node['type']}"
+    label_name = _format_label(node["name"], quoted=node.get("quote_name", False))
+    label = f"{label_name}: {node.get('summary') or node['type']}"
     lines.append(ancestor_prefix + connector + label)
 
     meta_entries = _meta_entries(node.get("meta", {}))
     if node.get("sample") is not None:
-        meta_entries.append(("line", f"sample: {node['sample']}"))
+        meta_entries.append(("line", f"<sample>: {node['sample']}"))
     children = node.get("children", [])
     trailing_line = None
     if node.get("truncated_items"):
@@ -75,6 +77,12 @@ def _meta_entries(meta: dict[str, Any]) -> list[tuple[str, Any]]:
     for key, value in meta.items():
         if value in ({}, [], None, False):
             continue
+        if key == "key_types" and isinstance(value, Mapping):
+            entries.append(("line", f"<key_types>: {_format_inline_mapping(value)}"))
+            continue
+        if key == "type_distribution" and isinstance(value, Mapping):
+            entries.append(("line", f"<type_distribution>: {_format_inline_mapping(value)}"))
+            continue
         if _is_tree_container(value):
             entries.append(("tree", (key, value)))
         else:
@@ -97,7 +105,7 @@ def _render_value(
         items = list(value.items())
         for index, (child_key, child_value) in enumerate(items):
             _render_value(
-                str(child_key),
+                _format_label(str(child_key), quoted=True),
                 child_value,
                 lines=lines,
                 ancestor_prefix=child_prefix,
@@ -131,6 +139,18 @@ def _format_scalar(value: Any) -> str:
     if isinstance(value, str):
         return value
     return safe_repr(value, max_length=80)
+
+
+def _format_label(label: str, *, quoted: bool) -> str:
+    if not quoted:
+        return label
+    escaped = label.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def _format_inline_mapping(value: Mapping[Any, Any]) -> str:
+    normalized = {str(key): item for key, item in value.items()}
+    return json.dumps(normalized, ensure_ascii=True)
 
 
 def _is_tree_container(value: Any) -> bool:

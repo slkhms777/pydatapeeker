@@ -1,14 +1,14 @@
 # DataLens
 
-DataLens is a Python tool for inspecting nested data files and complex in-memory objects with readable tree and Markdown output.
+DataLens 是一个用于探查嵌套数据文件和复杂 Python 对象结构的工具，支持清晰的树状输出和 Markdown 输出。
 
-Chinese README: [docs/README_zh.md](docs/README_zh.md)
+English README: [../README.md](../README.md)
 
-## Supported File Extensions
+## 1. 支持的文件后缀
 
 `*.pkl` `*.pickle` `*.parquet` `*.json` `*.jsonl` `*.csv` `*.tsv` `*.yaml` `*.yml` `*.npy` `*.npz`
 
-## Installation
+## 2. 安装方式
 
 ```bash
 git clone https://github.com/slkhms777/DataLens.git
@@ -16,38 +16,38 @@ cd DataLens
 pip install -e .
 ```
 
-## CLI Usage
+## 3. CLI 用法
 
-Show all CLI options:
+查看完整帮助：
 
 ```bash
 datalens --help
 ```
 
-Common example:
+常用示例：
 
 ```bash
 datalens your_file.parquet --max-depth 4 --max-dict-items 8 --max-list-items 1
 ```
 
-Supported CLI parameters:
+支持的 CLI 参数：
 
 - `path`
-  Input file path.
+  输入文件路径。
 - `--max-depth`
-  Maximum recursion depth. Default: `4`.
+  最大递归深度，默认 `4`。
 - `--max-dict-items`
-  Maximum displayed entries for dict-like nodes. Default: `8`.
+  每个 `dict` 类节点最多展示多少个 key，默认 `8`。
 - `--max-list-items`
-  Maximum displayed entries for list-like nodes. Default: `1`.
+  每个 `list` 类节点最多展示多少个元素，默认 `1`。
 - `--show-sample`
-  Show sample values for primitive leaf types. Default: `False`.
+  显示基础类型的示例值，默认关闭。
 - `--format`
-  Output format: `tree` or `markdown`. Default: `tree`.
+  输出格式，仅支持 `tree` 和 `markdown`，默认 `tree`。
 - `--write-to-file [OUTPUT_PATH]`
-  Write the result to a file. Default filename: `data_info_{file_name}.txt`. Supported suffixes: `.txt`, `.md`, `.markdown`.
+  将结果写入文件。默认文件名为 `data_info_{file_name}.txt`。仅支持 `.txt`、`.md`、`.markdown`。
 
-## API Usage
+## 4. API 用法
 
 ```python
 from datalens import inspect_file, inspect_obj

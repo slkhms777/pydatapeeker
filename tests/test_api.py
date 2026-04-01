@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import pickle
 import tempfile
 import unittest
@@ -14,14 +15,24 @@ class ApiTests(unittest.TestCase):
     def test_inspect_obj_tree_shows_nested_structure(self) -> None:
         output = inspect_obj({"user": {"id": 1, "name": "Ada"}, "items": [1, "x", None]})
         self.assertIn("root: dict (2 keys)", output)
-        self.assertIn("user: dict (2 keys)", output)
+        self.assertNotIn("root: dict (2 keys)\n├── length:", output)
+        self.assertIn('<key_types>: {"str": 2}', output)
+        self.assertIn('"user": dict (2 keys)', output)
         self.assertIn("mixed_types: True", output)
+        self.assertIn('<type_distribution>: {"NoneType": 1, "int": 1, "str": 1}', output)
+        self.assertNotIn('\n    ├── length:', output)
+        self.assertNotIn("<sample>:", output)
 
-    def test_inspect_obj_json_returns_serialized_payload(self) -> None:
-        output = inspect_obj([1, "two"], format="json")
-        payload = json.loads(output)
-        self.assertEqual(payload["summary"], "list (len=2)")
-        self.assertTrue(payload["meta"]["mixed_types"])
+    def test_inspect_obj_shows_samples_only_when_enabled(self) -> None:
+        output = inspect_obj({"count": 1, "flag": True, "name": "Ada"}, show_sample=True)
+        self.assertIn("<sample>: 1", output)
+        self.assertIn("<sample>: True", output)
+        self.assertIn("<sample>: 'Ada'", output)
+
+    def test_inspect_obj_markdown_returns_rendered_text(self) -> None:
+        output = inspect_obj([1, "two"], format="markdown")
+        self.assertIn("- **root**: list (len=2)", output)
+        self.assertIn("`mixed_types`: `True`", output)
 
     def test_inspect_file_json_loader(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -29,7 +40,30 @@ class ApiTests(unittest.TestCase):
             file_path.write_text(json.dumps({"a": [1, 2, 3]}), encoding="utf-8")
             output = inspect_file(file_path, max_depth=3)
         self.assertIn("sample.json: dict (1 keys)", output)
-        self.assertIn("a: list (len=3)", output)
+        self.assertIn('"a": list (len=3)', output)
+
+    def test_inspect_file_write_to_file_uses_requested_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "sample.json"
+            output_path = Path(tmp_dir) / "report.txt"
+            file_path.write_text(json.dumps({"a": 1}), encoding="utf-8")
+            output = inspect_file(file_path, write_to_file=output_path)
+            self.assertTrue(output_path.exists())
+            self.assertEqual(output, output_path.read_text(encoding="utf-8"))
+
+    def test_inspect_obj_write_to_file_uses_default_name_when_true(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            current = Path.cwd()
+            try:
+                import os
+
+                os.chdir(tmp_dir)
+                output = inspect_obj({"a": 1}, write_to_file=True)
+                output_path = Path(tmp_dir) / "data_info_root.txt"
+                self.assertTrue(output_path.exists())
+                self.assertEqual(output, output_path.read_text(encoding="utf-8"))
+            finally:
+                os.chdir(current)
 
     def test_inspect_file_csv_loader_without_pandas_requirement(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -38,6 +72,66 @@ class ApiTests(unittest.TestCase):
             output = inspect_file(file_path)
         self.assertIn("sample.csv:", output)
         self.assertTrue("len=2" in output or "DataFrame" in output)
+
+    def test_inspect_file_yaml_loader_with_generated_data(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "sample.yaml"
+            file_path.write_text(
+                '{"user": {"id": 1, "name": "Ada"}, "items": [1, 2, 3]}',
+                encoding="utf-8",
+            )
+            output = inspect_file(file_path, max_depth=3)
+        self.assertIn("sample.yaml: dict (2 keys)", output)
+        self.assertIn('"user": dict (2 keys)', output)
+        self.assertIn('"items": list (len=3)', output)
+
+    @unittest.skipUnless(importlib.util.find_spec("numpy"), "numpy is required for .npz loader tests")
+    def test_inspect_file_npz_loader_with_generated_data(self) -> None:
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "sample.npz"
+            np.savez(
+                file_path,
+                states=np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+                rewards=np.array([1, 0, 1], dtype=np.int64),
+            )
+            output = inspect_file(file_path, max_depth=3)
+        self.assertIn("sample.npz: dict (2 keys)", output)
+        self.assertIn('"states": ndarray (2, 2)', output)
+        self.assertIn('"rewards": ndarray (3,)', output)
+
+    @unittest.skipUnless(importlib.util.find_spec("pyarrow"), "pyarrow is required for table inspection tests")
+    def test_inspect_obj_pyarrow_table_uses_dataframe_like_column_first_view(self) -> None:
+        import pyarrow as pa
+
+        table = pa.table(
+            {
+                "timestamp": [0.0, 1.0, 2.0],
+                "index": [10, 11, 12],
+            }
+        )
+        output = inspect_obj(table, max_depth=3)
+        self.assertIn("root: pyarrow.Table (2 columns, 3 rows)", output)
+        self.assertIn('"timestamp": list (len=3)', output)
+        self.assertIn("[0]: float", output)
+        self.assertIn('"index": list (len=3)', output)
+        self.assertIn("... 2 more item(s)", output)
+
+    @unittest.skipUnless(importlib.util.find_spec("torch"), "torch is required for tensor inspection tests")
+    def test_inspect_obj_torch_tensor_shows_shape_and_dtype(self) -> None:
+        import torch
+
+        output = inspect_obj(torch.tensor([[1.0, 2.0], [3.0, 4.0]], dtype=torch.float32), max_list_items=3)
+        self.assertIn("root: torch.Tensor(shape=(2, 2), dtype=torch.float32)", output)
+
+    @unittest.skipUnless(importlib.util.find_spec("numpy"), "numpy is required for ndarray inspection tests")
+    def test_inspect_obj_ndarray_does_not_show_sample_meta_by_default(self) -> None:
+        import numpy as np
+
+        output = inspect_obj(np.array([1.0, 2.0, 3.0], dtype=np.float32))
+        self.assertIn("root: ndarray (3,)", output)
+        self.assertNotIn("<sample>:", output)
 
     def test_max_depth_stops_recursion(self) -> None:
         output = inspect_obj({"a": {"b": {"c": 1}}}, max_depth=2)
@@ -68,10 +162,27 @@ class ApiTests(unittest.TestCase):
                 output = inspect_file(file_path)
 
         self.assertIn("sample.pkl: dict (2 keys)", output)
-        self.assertIn("rank: int", output)
-        self.assertIn("observations: list (len=1)", output)
+        self.assertIn('"rank": int', output)
+        self.assertIn('"observations": list (len=1)', output)
         self.assertIn("[0]: dict (2 keys)", output)
-        self.assertIn("main_images: str", output)
+        self.assertIn('"main_images": str', output)
+
+    def test_default_container_limits_use_dict_eight_and_list_one(self) -> None:
+        payload = {f"k{index}": [index, index + 1] for index in range(10)}
+        output = inspect_obj(payload)
+        self.assertIn("root: dict (10 keys)", output)
+        self.assertIn("... 2 more item(s)", output)
+        self.assertIn('"k0": list (len=2)', output)
+        self.assertIn("[0]: int", output)
+        self.assertNotIn("[1]: int", output)
+
+    def test_explicit_container_limits_override_defaults(self) -> None:
+        payload = {f"k{index}": [index, index + 1, index + 2] for index in range(3)}
+        output = inspect_obj(payload, max_dict_items=2, max_list_items=2)
+        self.assertIn("root: dict (3 keys)", output)
+        self.assertIn('"k0": list (len=3)', output)
+        self.assertIn("[1]: int", output)
+        self.assertIn("... 1 more item(s)", output)
 
     def test_dataframe_summary_uses_concise_cell_previews(self) -> None:
         from datalens.inspectors.dataframe import summarize_dataframe
@@ -163,6 +274,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(summary["column_count"], 2)
         self.assertEqual(summary["column_summaries"][0]["name"], "observation.state")
         self.assertEqual(summary["column_summaries"][0]["dtype"], "object")
+        self.assertEqual(
+            summary["column_summaries"][0]["display_type"],
+            "ndarray(shape=(7,), dtype=float32)",
+        )
 
     def test_tree_formatter_recurses_through_meta_dicts_and_lists(self) -> None:
         from datalens.formatters.tree import render_tree
@@ -182,9 +297,38 @@ class ApiTests(unittest.TestCase):
         output = render_tree(inspection)
         self.assertIn("shape: list (len=2)", output)
         self.assertIn("details: dict (2 keys)", output)
-        self.assertIn("dtype: float32", output)
+        self.assertIn('"dtype": float32', output)
         self.assertIn("samples: list (len=2)", output)
         self.assertIn("... 1 more item(s)", output)
+
+    def test_tree_formatter_quotes_dataframe_and_dict_keys(self) -> None:
+        from datalens.formatters.tree import render_tree
+
+        inspection = {
+            "name": "frame",
+            "type": "DataFrame",
+            "summary": "DataFrame (1 rows, 1 columns)",
+            "children": [
+                {
+                    "name": "observation.state",
+                    "type": "dataframe_column",
+                    "summary": "list (len=1)",
+                    "quote_name": True,
+                    "children": [
+                        {
+                            "name": "[0]",
+                            "type": "dataframe_value",
+                            "summary": "ndarray(shape=(8,), dtype=float32)",
+                            "children": [],
+                        }
+                    ]
+                }
+            ],
+        }
+
+        output = render_tree(inspection)
+        self.assertIn('"observation.state": list (len=1)', output)
+        self.assertIn("[0]: ndarray(shape=(8,), dtype=float32)", output)
 
     def test_tree_formatter_places_truncated_items_after_first_child(self) -> None:
         from datalens.formatters.tree import render_tree
@@ -201,6 +345,36 @@ class ApiTests(unittest.TestCase):
 
         output = render_tree(inspection)
         self.assertLess(output.index("[0]: int"), output.index("... 2 more item(s)"))
+
+    def test_tree_formatter_renders_key_types_as_special_inline_line(self) -> None:
+        from datalens.formatters.tree import render_tree
+
+        inspection = {
+            "name": "root",
+            "type": "dict",
+            "summary": "dict (2 keys)",
+            "meta": {"key_types": {"str": 2, "int": 1}},
+            "children": [],
+        }
+
+        output = render_tree(inspection)
+        self.assertIn('<key_types>: {"str": 2, "int": 1}', output)
+        self.assertNotIn("key_types: dict", output)
+
+    def test_tree_formatter_renders_type_distribution_as_special_inline_line(self) -> None:
+        from datalens.formatters.tree import render_tree
+
+        inspection = {
+            "name": "root",
+            "type": "list",
+            "summary": "list (len=2)",
+            "meta": {"type_distribution": {"torch.Tensor": 2}},
+            "children": [],
+        }
+
+        output = render_tree(inspection)
+        self.assertIn('<type_distribution>: {"torch.Tensor": 2}', output)
+        self.assertNotIn("type_distribution: dict", output)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from datalens.loaders.core import register_loader
-from datalens.loaders.pickle_static import inspect_pickle_structure
+from datalens.loaders.pickle_static import StaticPickleData
 
 
 @register_loader(".pkl", ".pickle")
@@ -24,4 +24,4 @@ def load_pickle(path: Path) -> Any:
             return pickle.load(handle)
         except ModuleNotFoundError:
             handle.seek(0)
-            return inspect_pickle_structure(handle.read(), root_name=path.name)
+            return StaticPickleData(data=handle.read(), root_name=path.name)
