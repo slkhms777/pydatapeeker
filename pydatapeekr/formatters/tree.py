@@ -77,16 +77,14 @@ def _meta_entries(meta: dict[str, Any]) -> list[tuple[str, Any]]:
     for key, value in meta.items():
         if value in ({}, [], None, False):
             continue
-        if key == "key_types" and isinstance(value, Mapping):
-            entries.append(("line", f"<key_types>: {_format_inline_mapping(value)}"))
-            continue
-        if key == "type_distribution" and isinstance(value, Mapping):
-            entries.append(("line", f"<type_distribution>: {_format_inline_mapping(value)}"))
+        label = _format_meta_label(key)
+        if _is_stat_meta_key(key) and isinstance(value, Mapping):
+            entries.append(("line", f"{label}: {_format_inline_mapping(value)}"))
             continue
         if _is_tree_container(value):
-            entries.append(("tree", (key, value)))
+            entries.append(("tree", (label, value)))
         else:
-            entries.append(("line", f"{key}: {_format_scalar(value)}"))
+            entries.append(("line", f"{label}: {_format_scalar(value)}"))
     return entries
 
 
@@ -151,6 +149,16 @@ def _format_label(label: str, *, quoted: bool) -> str:
 def _format_inline_mapping(value: Mapping[Any, Any]) -> str:
     normalized = {str(key): item for key, item in value.items()}
     return json.dumps(normalized, ensure_ascii=True)
+
+
+def _is_stat_meta_key(key: str) -> bool:
+    return key in {"attribute_count", "key_types", "type_distribution"} or key.endswith("_count")
+
+
+def _format_meta_label(key: str) -> str:
+    if _is_stat_meta_key(key):
+        return f"<{key}>"
+    return key
 
 
 def _is_tree_container(value: Any) -> bool:

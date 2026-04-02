@@ -419,6 +419,24 @@ class ApiTests(unittest.TestCase):
         self.assertIn('<type_distribution>: {"torch.Tensor": 2}', output)
         self.assertNotIn("type_distribution: dict", output)
 
+    def test_tree_formatter_wraps_attribute_count_meta_in_angle_brackets(self) -> None:
+        from pydatapeekr.formatters.tree import render_tree
+
+        inspection = {
+            "name": "cfg",
+            "type": "custom_object",
+            "summary": "SomeObject",
+            "meta": {"attribute_count": 8},
+            "children": [
+                {"name": "path", "type": "list", "summary": "list (len=1)", "children": []},
+            ],
+        }
+
+        output = render_tree(inspection)
+        self.assertIn("<attribute_count>: 8", output)
+        self.assertNotIn("attribute_count: 8", output)
+        self.assertIn("path: list (len=1)", output)
+
 
 if __name__ == "__main__":
     unittest.main()
