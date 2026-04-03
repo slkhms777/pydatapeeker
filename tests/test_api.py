@@ -38,28 +38,34 @@ class ApiTests(unittest.TestCase):
     def test_wrap_output_plain_style_returns_original_text(self) -> None:
         self.assertEqual(wrap_output("hello", style="plain"), "hello")
 
-    def test_wrap_output_blank_style_adds_surrounding_newlines(self) -> None:
-        self.assertEqual(wrap_output("hello", style="blank"), "\nhello\n")
+    def test_wrap_output_dash_style_uses_minimum_width_20(self) -> None:
+        expected = "\n" + "-" * 4 + " PEEKR INFO " + "-" * 4 + "\nhello\n" + "-" * 20 + "\n"
+        self.assertEqual(wrap_output("hello", style="-"), expected)
 
-    def test_wrap_output_rule_style_adds_horizontal_rules(self) -> None:
-        wrapped = wrap_output("hello", style="rule")
-        self.assertEqual(wrapped, f"{'-' * 40}\nhello\n{'-' * 40}")
+    def test_wrap_output_uses_max_line_width_and_rounds_odd_width_up(self) -> None:
+        wrapped = wrap_output("123456789012345678901", style="#")
+        self.assertTrue(wrapped.startswith("\n" + "#" * 5 + " PEEKR INFO " + "#" * 5 + "\n"))
+        self.assertTrue(wrapped.endswith("#" * 22 + "\n"))
+
+    def test_wrap_output_backtick_style_uses_selected_banner_character(self) -> None:
+        wrapped = wrap_output("hello", style="`")
+        self.assertIn("\n" + "`" * 4 + " PEEKR INFO " + "`" * 4 + "\n", wrapped)
+        self.assertTrue(wrapped.endswith("`" * 20 + "\n"))
 
     def test_display_obj_prints_wrapped_output_without_changing_inspect_obj(self) -> None:
         buffer = io.StringIO()
-        wrapped = display_obj({"a": 1}, style="rule", stream=buffer)
-        self.assertEqual(wrapped, buffer.getvalue().rstrip("\n"))
-        self.assertIn("-" * 40, wrapped)
+        wrapped = display_obj({"a": 1}, style="-", stream=buffer)
+        self.assertEqual(wrapped, buffer.getvalue())
+        self.assertIn("-" * 4 + " PEEKR INFO " + "-" * 4, wrapped)
         self.assertIn("root: dict (1 keys)", wrapped)
 
-    def test_display_file_prints_blank_wrapped_output(self) -> None:
+    def test_display_file_prints_plain_output_without_wrapper(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             file_path = Path(tmp_dir) / "sample.json"
             file_path.write_text(json.dumps({"a": 1}), encoding="utf-8")
             buffer = io.StringIO()
-            wrapped = display_file(file_path, style="blank", stream=buffer)
-        self.assertEqual(wrapped, "\n" + wrapped.strip("\n") + "\n")
-        self.assertEqual(buffer.getvalue(), wrapped + "\n")
+            wrapped = display_file(file_path, style="plain", stream=buffer)
+        self.assertEqual(buffer.getvalue(), wrapped)
         self.assertIn("sample.json: dict (1 keys)", wrapped)
 
     def test_inspect_file_json_loader(self) -> None:
@@ -164,6 +170,24 @@ class ApiTests(unittest.TestCase):
         self.assertIn("[0]: float", output)
         self.assertIn('"index": list (len=3)', output)
         self.assertIn("... 2 more item(s)", output)
+
+    @unittest.skipUnless(importlib.util.find_spec("pandas"), "pandas is required for DataFrame inspection tests")
+    def test_inspect_obj_dataframe_recurses_into_first_object_cell(self) -> None:
+        import pandas as pd
+
+        frame = pd.DataFrame(
+            {
+                "image": [{"bytes": b"abc", "size": [32, 32]}, {"bytes": b"def", "size": [64, 64]}],
+                "label": [1, 2],
+            }
+        )
+        output = inspect_obj(frame, max_depth=4, max_list_items=1)
+        self.assertIn("root: DataFrame (2 columns, 2 rows)", output)
+        self.assertIn('"image": list (len=2)', output)
+        self.assertIn("[0]: dict (2 keys)", output)
+        self.assertIn('"size": list (len=2)', output)
+        self.assertIn('"label": list (len=2)', output)
+        self.assertIn("[0]: int", output)
 
     @unittest.skipUnless(importlib.util.find_spec("torch"), "torch is required for tensor inspection tests")
     def test_inspect_obj_torch_tensor_shows_shape_and_dtype(self) -> None:

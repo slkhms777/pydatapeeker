@@ -93,26 +93,18 @@ def _analyze(
             row_count, column_count = summary["shape"]
             node["summary"] = f"DataFrame ({column_count} columns, {row_count} rows)"
             node["children"] = [
-                {
-                    "name": column["name"],
-                    "type": "dataframe_column",
-                    "depth": depth + 1,
-                    "summary": f"list (len={row_count})",
-                    "quote_name": True,
-                    "children": (
-                        [
-                            {
-                                "name": "[0]",
-                                "type": "dataframe_value",
-                                "depth": depth + 2,
-                                "summary": column["display_type"],
-                            }
-                        ]
-                        if row_count > 0
-                        else []
-                    ),
-                    **({"truncated_items": row_count - 1} if row_count > 1 else {}),
-                }
+                _analyze_tabular_column(
+                    value=obj[column["name"]].iloc[0] if row_count > 0 else None,
+                    name=column["name"],
+                    column_type="dataframe_column",
+                    row_count=row_count,
+                    depth=depth,
+                    max_depth=max_depth,
+                    max_dict_items=max_dict_items,
+                    max_list_items=max_list_items,
+                    show_sample=show_sample,
+                    active_path=active_path,
+                )
                 for column in summary.get("column_summaries", [])
             ]
             return node
@@ -349,6 +341,46 @@ def _attach_object_array_children(
         node["children"] = children
     if hidden:
         node["truncated_items"] = hidden
+
+
+def _analyze_tabular_column(
+    value: Any,
+    *,
+    name: str,
+    column_type: str,
+    row_count: int,
+    depth: int,
+    max_depth: int,
+    max_dict_items: int,
+    max_list_items: int,
+    show_sample: bool,
+    active_path: set[int],
+) -> dict[str, Any]:
+    """Represent a tabular column as a list whose first item is recursively analyzed."""
+    node: dict[str, Any] = {
+        "name": name,
+        "type": column_type,
+        "depth": depth + 1,
+        "summary": f"list (len={row_count})",
+        "quote_name": True,
+        "children": [],
+    }
+    if row_count > 0:
+        node["children"] = [
+            _analyze(
+                value,
+                name="[0]",
+                depth=depth + 2,
+                max_depth=max_depth,
+                max_dict_items=max_dict_items,
+                max_list_items=max_list_items,
+                show_sample=show_sample,
+                active_path=active_path,
+            )
+        ]
+    if row_count > 1:
+        node["truncated_items"] = row_count - 1
+    return node
 
 
 def _is_basic_type(obj: Any) -> bool:

@@ -53,7 +53,7 @@ Print a file inspection result with a terminal-friendly wrapper.
 ```python
 import pydatapeekr as peekr
 
-peekr.display_file("data.json", style="rule")
+peekr.display_file("data.json")  # default style="-"
 ```
 
 ### `peekr.display_obj(...)`
@@ -65,15 +65,16 @@ import pydatapeekr as peekr
 
 peekr.display_obj(
     {"user": {"id": 1}, "items": [1, 2, 3]},
-    style="rule",
+    style="#",
 )
 ```
 
 ## Display Styles
 
 - `plain`: no wrapper
-- `blank`: add a blank line before and after
-- `rule`: add horizontal separator lines before and after
+- `-`: dashed banner wrapper, with blank lines before and after
+- `#`: hash banner wrapper, with blank lines before and after
+- `` ` ``: backtick banner wrapper, with blank lines before and after
 
 ## Common Parameters
 

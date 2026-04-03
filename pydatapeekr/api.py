@@ -47,7 +47,7 @@ def display_obj(
     max_list_items: int = 1,
     show_sample: bool = False,
     format: str = "tree",
-    style: str = "rule",
+    style: str = "-",
     stream: Any | None = None,
 ) -> str:
     """Inspect an in-memory object and print it with a terminal-friendly wrapper."""
@@ -61,7 +61,7 @@ def display_obj(
         write_to_file=None,
     )
     wrapped = wrap_output(output, style=style)
-    print(wrapped, file=stream or sys.stdout)
+    (stream or sys.stdout).write(wrapped)
     return wrapped
 
 
@@ -105,7 +105,7 @@ def display_file(
     max_list_items: int = 1,
     show_sample: bool = False,
     format: str = "tree",
-    style: str = "rule",
+    style: str = "-",
     stream: Any | None = None,
 ) -> str:
     """Inspect a file and print it with a terminal-friendly wrapper."""
@@ -119,21 +119,31 @@ def display_file(
         write_to_file=None,
     )
     wrapped = wrap_output(output, style=style)
-    print(wrapped, file=stream or sys.stdout)
+    (stream or sys.stdout).write(wrapped)
     return wrapped
 
 
-def wrap_output(text: str, *, style: str = "rule") -> str:
+def wrap_output(text: str, *, style: str = "-") -> str:
     """Wrap inspection text for clearer terminal display."""
-    normalized = style.lower()
-    if normalized == "plain":
+    if style == "plain":
         return text
-    if normalized == "blank":
-        return f"\n{text}\n"
-    if normalized == "rule":
-        line = "-" * 40
-        return f"{line}\n{text}\n{line}"
+    if style in {"-", "#", "`"}:
+        content_width = _wrapper_content_width(text)
+        side_width = (content_width - 12) // 2
+        banner = style * side_width + " PEEKR INFO " + style * side_width
+        footer = style * len(banner)
+        return f"\n{banner}\n{text}\n{footer}\n"
     raise ValueError(f"Unsupported display style: {style}")
+
+
+def _wrapper_content_width(text: str) -> int:
+    """Return the target banner width for wrapped display text."""
+    lines = text.splitlines() or [text]
+    max_width = max(len(line) for line in lines) if lines else 0
+    content_width = max(20, max_width)
+    if content_width % 2 == 1:
+        content_width += 1
+    return content_width
 
 
 def resolve_output_path(

@@ -53,7 +53,7 @@ text = peekr.inspect_obj(
 ```python
 import pydatapeekr as peekr
 
-peekr.display_file("data.json", style="rule")
+peekr.display_file("data.json")  # 默认 style="-"
 ```
 
 ### `peekr.display_obj(...)`
@@ -65,15 +65,16 @@ import pydatapeekr as peekr
 
 peekr.display_obj(
     {"user": {"id": 1}, "items": [1, 2, 3]},
-    style="rule",
+    style="#",
 )
 ```
 
 ## 输出外壳样式
 
 - `plain`：不加额外外壳
-- `blank`：前后各加一个空行
-- `rule`：前后各加一行分隔线
+- `-`：使用横线标题栏外壳，前后自带空行
+- `#`：使用井号标题栏外壳，前后自带空行
+- `` ` ``：使用反引号标题栏外壳，前后自带空行
 
 ## 常用参数
 
