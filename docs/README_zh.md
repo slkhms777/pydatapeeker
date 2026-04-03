@@ -33,6 +33,7 @@ uv pip install "git+https://github.com/slkhms777/pydatapeekr.git"
 
 ```bash
 peek your_file_path
+peek --help  # 查看参数
 ```
 
 ## 4. API 用法

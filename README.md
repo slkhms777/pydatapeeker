@@ -35,6 +35,7 @@ Quick Start:
 
 ```bash
 peek your_file_path
+peek --help  # for args
 ```
 
 ## API Usage

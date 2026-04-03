@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pydatapeekr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Inspect complex data files and nested Python objects with readable summaries."
 readme = "README.md"
 requires-python = ">=3.10"
