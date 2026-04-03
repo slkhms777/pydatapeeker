@@ -238,6 +238,61 @@ class ApiTests(unittest.TestCase):
         self.assertIn("[0]: dict (2 keys)", output)
         self.assertIn('"main_images": str', output)
 
+    def test_pickle_loader_retries_with_latin1_after_unicode_decode_error(self) -> None:
+        payload = {"name": "Ada", "score": 3}
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "sample.pkl"
+            with file_path.open("wb") as handle:
+                pickle.dump(payload, handle, protocol=4)
+
+            with patch(
+                "pydatapeekr.loaders.pickle_loader._safe_pickle_load",
+                side_effect=[UnicodeDecodeError("ascii", b"\xd5", 0, 1, "boom"), payload],
+            ) as mock_load:
+                output = inspect_file(file_path)
+
+        self.assertEqual(mock_load.call_count, 2)
+        self.assertEqual(mock_load.call_args_list[1].kwargs, {"encoding": "latin1"})
+        self.assertIn("sample.pkl: dict (2 keys)", output)
+        self.assertIn('"name": str', output)
+
+    def test_pickle_loader_uses_static_schema_after_latin1_retry_still_needs_missing_module(self) -> None:
+        payload = {
+            "rank": 0,
+            "observations": [{"main_images": "tensor-placeholder", "task": "demo"}],
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = Path(tmp_dir) / "sample.pkl"
+            with file_path.open("wb") as handle:
+                pickle.dump(payload, handle, protocol=4)
+
+            with patch(
+                "pydatapeekr.loaders.pickle_loader._safe_pickle_load",
+                side_effect=[
+                    UnicodeDecodeError("ascii", b"\xd5", 0, 1, "boom"),
+                    ModuleNotFoundError("scipy"),
+                ],
+            ):
+                output = inspect_file(file_path)
+
+        self.assertIn("sample.pkl: dict (2 keys)", output)
+        self.assertIn('"rank": int', output)
+        self.assertIn('"observations": list (len=1)', output)
+
+    def test_static_pickle_parser_supports_legacy_binput_memo_references(self) -> None:
+        from pydatapeekr.loaders.pickle_static import inspect_pickle_structure
+
+        # Protocol 2 emits BINPUT/BINGET opcodes.
+        payload = pickle.dumps({"items": ["alpha", "beta"]}, protocol=2)
+        inspection = inspect_pickle_structure(payload, root_name="sample.pkl", max_dict_items=8, max_list_items=2)
+
+        rendered = inspection.payload
+        self.assertEqual(rendered["summary"], "dict (1 keys)")
+        self.assertEqual(rendered["children"][0]["name"], "items")
+        self.assertEqual(rendered["children"][0]["summary"], "list (len=2)")
+
     def test_default_container_limits_use_dict_eight_and_list_one(self) -> None:
         payload = {f"k{index}": [index, index + 1] for index in range(10)}
         output = inspect_obj(payload)

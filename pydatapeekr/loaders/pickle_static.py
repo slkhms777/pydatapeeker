@@ -66,10 +66,20 @@ class _StaticPickleParser:
             elif name == "MEMOIZE":
                 self.memo[self.next_memo_index] = stack[-1]
                 self.next_memo_index += 1
-            elif name in {"BINGET", "LONG_BINGET"}:
+            elif name in {"PUT", "BINPUT", "LONG_BINPUT"}:
+                # Older pickle protocols use explicit memo opcodes instead of
+                # MEMOIZE. Supporting them lets us statically inspect legacy model
+                # checkpoints even when their runtime dependencies are missing.
+                self.memo[int(arg)] = stack[-1]
+                self.next_memo_index = max(self.next_memo_index, int(arg) + 1)
+            elif name in {"GET", "BINGET", "LONG_BINGET"}:
                 stack.append(self.memo[arg])
             elif name in {"SHORT_BINUNICODE", "BINUNICODE", "UNICODE"}:
                 stack.append(arg)
+            elif name in {"SHORT_BINSTRING", "BINSTRING", "STRING"}:
+                # Legacy Python 2 pickles often use byte-string opcodes here.
+                # Decode with latin1 so we preserve the original byte values.
+                stack.append(self._legacy_string(arg))
             elif name in {"BININT", "BININT1", "BININT2"}:
                 stack.append(arg)
             elif name == "NEWTRUE":
@@ -99,7 +109,17 @@ class _StaticPickleParser:
                 global_name = stack.pop()
                 module_name = stack.pop()
                 stack.append(_GlobalRef(module=str(module_name), name=str(global_name)))
+            elif name == "GLOBAL":
+                module_name, global_name = str(arg).split(" ", 1)
+                stack.append(_GlobalRef(module=module_name, name=global_name))
             elif name == "REDUCE":
+                args = stack.pop()
+                callable_ref = stack.pop()
+                stack.append(self._reduce(callable_ref, args))
+            elif name == "NEWOBJ":
+                # For static inspection we only care about the constructor identity
+                # and top-level shape, so NEWOBJ can reuse the same reduced-object
+                # handling as REDUCE.
                 args = stack.pop()
                 callable_ref = stack.pop()
                 stack.append(self._reduce(callable_ref, args))
@@ -107,6 +127,13 @@ class _StaticPickleParser:
                 state = stack.pop()
                 instance = stack.pop()
                 stack.append(self._build(instance, state))
+            elif name == "SETITEM":
+                # Older protocols may add dict items one by one instead of via
+                # SETITEMS, so we support both to keep summaries stable.
+                value = stack.pop()
+                key = stack.pop()
+                target = stack[-1]
+                self._setitems(target, [key, value])
             elif name == "SETITEMS":
                 items = self._pop_marked(stack)
                 target = stack[-1]
@@ -184,6 +211,11 @@ class _StaticPickleParser:
 
     def _build(self, instance: Any, _state: Any) -> Any:
         return instance
+
+    def _legacy_string(self, arg: Any) -> str:
+        if isinstance(arg, bytes):
+            return arg.decode("latin1")
+        return str(arg)
 
     def _setitems(self, target: Any, items: list[Any]) -> None:
         if not self._is_node(target) or target.get("_kind") != "dict":
