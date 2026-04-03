@@ -62,6 +62,8 @@ peekr.display_obj(
 
 ## 5. 示例
 
+### Case 1：查看内存中的对象
+
 ```python
 import pydatapeekr as peekr
 
@@ -85,6 +87,8 @@ root: DataFrame (2 columns, 2500 rows)
     └── ... 2499 more item(s)
 --------------------------------------
 ```
+
+### Case 2：查看数据文件
 
 ```python
 import pydatapeekr as peekr

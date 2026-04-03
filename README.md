@@ -64,6 +64,8 @@ For the full API reference and more examples, see [docs/api.md](docs/api.md).
 
 ## Examples
 
+### Case 1: Inspect an In-Memory Object
+
 ```python
 import pydatapeekr as peekr
 
@@ -87,6 +89,8 @@ root: DataFrame (2 columns, 2500 rows)
     └── ... 2499 more item(s)
 --------------------------------------
 ```
+
+### Case 2: Inspect a Data File
 
 ```python
 import pydatapeekr as peekr
